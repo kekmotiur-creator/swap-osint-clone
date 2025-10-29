@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const driveUrl = 'https://drive.google.com/uc?export=download&id=1unrZ1yxfKOV3MbFAegcqFURYQqGgLRNu';
+    const driveUrl = 'https://drive.usercontent.google.com/download?id=1unrZ1yxfKOV3MbFAegcqFURYQqGgLRNu&export=download&authuser=0&confirm=t&uuid=dafbeea2-3523-4dca-bc91-4a13bee2d9e5&at=AKSUxGP-2QI0VbbUoGh7MLSMAb5d%3A1761742349706';
 
     // Fetch the Google Drive CSV as a stream
     const response = await fetch(driveUrl);
