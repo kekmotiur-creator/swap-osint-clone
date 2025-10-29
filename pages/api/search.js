@@ -1,55 +1,59 @@
-import { promises as fs } from 'fs';
-import path from 'path';
+// pages/api/search.js
+import fetch from 'node-fetch';
+import readline from 'readline';
+import { PassThrough } from 'stream';
 
-function parseCSV(text){
-  const rows = []
-  let i = 0, len = text.length
-  let cur = ''
-  let row = []
-  let inQuotes = false
-  while(i < len){
-    const ch = text[i]
-    if(inQuotes){
-      if(ch === '"'){
-        if(i+1 < len && text[i+1] === '"'){ cur += '"'; i += 2; continue }
-        inQuotes = false
-        i++; continue
-      } else {
-        cur += ch; i++; continue
-      }
-    } else {
-      if(ch === '"'){ inQuotes = true; i++; continue }
-      if(ch === ','){ row.push(cur); cur = ''; i++; continue }
-      if(ch === '\r'){ i++; continue }
-      if(ch === '\n'){ row.push(cur); rows.push(row); row = []; cur = ''; i++; continue }
-      cur += ch; i++; continue
-    }
+export default async function handler(req, res) {
+  const { num } = req.query;
+
+  if (!num) {
+    return res.status(400).json({ error: 'Please provide ?num=' });
   }
-  if(cur !== '' || row.length>0){ row.push(cur); rows.push(row) }
-  return rows
-}
 
-export default async function handler(req, res){
-  const num = req.query.num || req.query.number
-  if(!num) return res.status(400).json({ error: 'Missing num parameter. Use ?num=9971920491' })
+  try {
+    const driveUrl = 'https://drive.google.com/uc?export=download&id=1unrZ1yxfKOV3MbFAegcqFURYQqGgLRNu';
 
-  try{
-    const filePath = path.join(process.cwd(), 'sample.csv')
-    const txt = await fs.readFile(filePath, 'utf8')
-    const rows = parseCSV(txt)
-    const target = (num||'').replace(/[^0-9]/g,'')
-    const found = rows.find(r => {
-      if(!r || r.length===0) return false
-      const first = (r[0]||'').replace(/[^0-9]/g,'')
-      return first === target || first.endsWith(target) || ('91'+first) === target || ('91'+first) === ('91'+target)
-    })
+    // Fetch the Google Drive CSV as a stream
+    const response = await fetch(driveUrl);
+    if (!response.ok) throw new Error('Failed to fetch file from Google Drive');
 
-    if(!found) return res.status(404).json({ error: 'Number not found' })
+    const pass = new PassThrough();
+    response.body.pipe(pass);
 
-    const [number,name,father,address,linked_number,circle,aadhar,email] = found
-    return res.status(200).json({ number, name, father, address, linked_number, circle, aadhar, email })
-  }catch(err){
-    console.error(err)
-    return res.status(500).json({ error: 'Server error' })
+    const rl = readline.createInterface({
+      input: pass,
+      crlfDelay: Infinity,
+    });
+
+    let foundLine = null;
+
+    for await (const line of rl) {
+      if (line.includes(num)) {
+        foundLine = line;
+        break;
+      }
+    }
+
+    if (!foundLine) {
+      return res.status(404).json({ error: 'Number not found' });
+    }
+
+    // Split CSV line
+    const parts = foundLine.split(',');
+    const result = {
+      mobile: parts[0]?.replace(/"/g, ''),
+      name: parts[1]?.replace(/"/g, ''),
+      fname: parts[2]?.replace(/"/g, ''),
+      address: parts[3]?.replace(/"/g, ''),
+      alt: parts[4]?.replace(/"/g, ''),
+      circle: parts[5]?.replace(/"/g, ''),
+      id: parts[6]?.replace(/"/g, ''),
+      email: parts[7]?.replace(/"/g, ''),
+    };
+
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Internal Server Error', details: err.message });
   }
 }
