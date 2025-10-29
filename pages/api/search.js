@@ -1,5 +1,4 @@
 // pages/api/search.js
-import fetch from 'node-fetch';
 import readline from 'readline';
 import { PassThrough } from 'stream';
 
@@ -11,9 +10,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const driveUrl = 'https://drive.usercontent.google.com/download?id=1unrZ1yxfKOV3MbFAegcqFURYQqGgLRNu&export=download&authuser=0&confirm=t&uuid=dafbeea2-3523-4dca-bc91-4a13bee2d9e5&at=AKSUxGP-2QI0VbbUoGh7MLSMAb5d%3A1761742349706';
+    const driveUrl =
+      'https://drive.usercontent.google.com/download?id=1unrZ1yxfKOV3MbFAegcqFURYQqGgLRNu&export=download&authuser=0&confirm=t&uuid=dafbeea2-3523-4dca-bc91-4a13bee2d9e5&at=AKSUxGP-2QI0VbbUoGh7MLSMAb5d%3A1761742349706';
 
-    // Fetch the Google Drive CSV as a stream
+    // Use the global fetch available in Node 18+ (no need for node-fetch)
     const response = await fetch(driveUrl);
     if (!response.ok) throw new Error('Failed to fetch file from Google Drive');
 
@@ -54,6 +54,9 @@ export default async function handler(req, res) {
     return res.status(200).json(result);
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: 'Internal Server Error', details: err.message });
+    return res
+      .status(500)
+      .json({ error: 'Internal Server Error', details: err.message });
   }
 }
+```
